@@ -4,16 +4,6 @@
 using Markdown
 using InteractiveUtils
 
-# This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
-macro bind(def, element)
-    quote
-        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
-        local el = $(esc(element))
-        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
-        el
-    end
-end
-
 # ╔═╡ 26c3d3fe-af66-4d79-8aaa-5f5b0784bab0
 using CairoMakie
 
@@ -30,73 +20,369 @@ using Distributions
 using LinearAlgebra
 
 # ╔═╡ 6259db20-c705-4e7c-ba8f-18cc8b733f8b
-using Random: AbstractRNG, Xoshiro, default_rng
+using Random: AbstractRNG, Xoshiro, default_rng, randexp
 
 # ╔═╡ aa7a9420-f7e1-4a44-9375-882c79f97e1a
-using ProfileSVG
+using LsqFit
 
 # ╔═╡ 7c145e9e-5d12-11ed-3c4b-796dde8540c7
-md"# Random Variables"
+md"""
+# Random Variables
 
-# ╔═╡ fd3754b0-f8cd-428d-9c97-f5d2583eb82f
-X(ω, α) = -log(ω) / α
+Useful links for this section:
+- [Random docs](https://docs.julialang.org/en/v1/stdlib/Random/#Random-Numbers)
+- [Mathematical operations docs](https://docs.julialang.org/en/v1/manual/mathematical-operations/#Mathematical-Operations-and-Elementary-Functions)
+- [Histogram docs](https://juliastats.org/StatsBase.jl/stable/empirical/#Empirical-Estimation-1)
+- [Plotting docs](https://docs.makie.org/stable/)
+- [Plotting example gallery](https://beautiful.makie.org/dev/)
+
+In Julia, the [rand](https://docs.julialang.org/en/v1/stdlib/Random/#Base.rand) function samples a number in [0,1). press SHIFT + RETURN with the cursor in the cell below to sample a new number.
+"""
+
+# ╔═╡ 9128a75c-bcc4-4131-bdd0-73a6a8490165
+rand()
+
+# ╔═╡ f89e1123-2dd8-4c40-b501-909829e8c714
+md"## Exercise 1: Bernoulli Trial
+Below is a function definition and evaluation. Right now the function only returns *true* no matter what random number rand spits out."
+
+# ╔═╡ 985916d7-8105-48d7-a3c9-9447afa50416
+bernoulli(ω, p) = true
+
+# ╔═╡ f3e091d6-5359-40b2-817e-db2848d70f90
+bernoulli(rand(), 0.5)
+
+# ╔═╡ f1ff8af1-6954-4771-9981-db2e295360a3
+# this counts how often bernoulli(rand(), 0.7) returns true out of 1_000 evaluations
+# If you've implemented the function correctly this should return 0.7
+count([bernoulli(rand(), 0.7) for _ in 1:1_000]) / 1_000
+
+# ╔═╡ 6382e7e4-2508-4bf6-9b09-41692268089b
+md"Here are some examples of how to define functions in Julia."
+
+# ╔═╡ bed0c3f8-0017-4fdd-b520-e4a265677140
+# This is a one line function definition
+# f adds the inputs x, y and z and subtracts 5
+f(x, y, z) = x + y + z - 5 
+
+# ╔═╡ 0642ade6-1869-4848-bc85-f60a85ec15ff
+f(0.6, 0.1, 10)
+
+# ╔═╡ 154cd13b-391d-46c2-83d6-241ca23a154e
+# Functions often do more complicated things and may require multiple lines
+# I show the return staement here, but you can delete return and just keep
+# max(a,b) at the end. The last line of a function is automatically returned.
+function g(x, y)
+	a = 2x
+	b = 5y + x
+	return max(a, b)  # returns the larger of a and b
+end
+
+# ╔═╡ 08548873-ffd7-4f0c-83cd-8ba4c8d536c6
+g(5, 7)
+
+# ╔═╡ bbfdd8d8-f27f-4830-b468-df189c778de8
+md"To return something else, try changing the bernoulli function above to return *false* instead. To do the first exercise, you may find the less than or equals (<=) comparison operator useful.
+
+To be able to use greek letters and other symbols, type \\omega and press TAB. You can get all kinds of greek letters and mathematical symbols this way."
+
+# ╔═╡ a666d797-ecf3-441f-9406-f616305f2d31
+rand() <= 0.9
+
+# ╔═╡ a736afcc-b477-45f9-ae5b-0fdd31b4f4f7
+md"One major use of the *true* and *false* values is to conditionally execute code. For example,"
+
+# ╔═╡ ca39bb7a-39e6-4756-810b-20813aede18f
+if bernoulli(rand(), 0.8)
+	println("80% of the time I'm happy! :)")
+else
+	println("But 20% of the time I'm sad :(")
+end
+
+# ╔═╡ 57ea1a43-33ec-46d9-a26c-9a52d5fb52f1
+md"## Exercise 2: Uniform Distribution"
 
 # ╔═╡ e09214e7-82b3-4119-8b97-ff92da6c9f3f
-uniform(ω, a, b) = (b-a) * ω + a
+uniform(ω, a, b) = ω
 
-# ╔═╡ a371cb82-8f98-4032-bc3d-e89278fd90e1
-# calling a function
-X(0.2, 1.0)
+# ╔═╡ e12a61f0-b0bc-4fad-8712-64668dad552b
+# Not quite right yet
+5 <= uniform(rand(), 5, 9) <= 9
+
+# ╔═╡ f35904f0-a884-4979-a464-2ac04fcd5cf7
+md"To generate a uniformly distributed variable, you may find the basic mathematical operations useful. Below are some examples. For more details, click on the docs link at the beginning of this section."
+
+# ╔═╡ 4cf08f8c-b7ee-4700-b556-b61abe166b15
+# This is a variable representing the number 2.3
+foo = 2.3
+
+# ╔═╡ 04a883ff-f076-47a3-9c7a-b645abb6e2c3
+# It can be multiplied
+foo * 3
+
+# ╔═╡ b45f6141-c1ee-4ec0-949f-b4fbc7b512e3
+# Or divided. Get π by typing \pi and then TAB
+foo / π
+
+# ╔═╡ 7d0b767d-61c4-4041-909e-1fb2a177ccf9
+# Or added and subtracted
+foo + 3 - 20 <= 0
+
+# ╔═╡ 41d77d2a-b38b-46a7-97a1-a3e530df33fb
+# and much more...
+sqrt(sin(log(foo^3)))
+
+# ╔═╡ 9e61d9c4-1308-46d5-b32d-7e8419a48f67
+md"## Making a Histogram
+Let's test whether your random variable is doing the right thing by sampling many times and plotting the distribution of the samples we get.
+
+To make a list or vector of samples, you can use a list comprehension as below. I also provide some further examples so you can see how list comprehensions and Vectors work."
+
+# ╔═╡ 08cb36a2-4b14-4003-b2f1-131f87e82db2
+[i for i in 1:5]
+
+# ╔═╡ 8d59dc93-cc98-4e58-aaf0-3112758c7cb5
+# Note that these a:b objects are not Vectors, they are called ranges.
+# However, they behave like a Vector and they can be converted to one with collect
+# In fact, anything you can iterate over can be turned into a Vector with collect
+5:8, collect(5:8)
+
+# ╔═╡ bca187e3-04c6-4a30-81ba-c639f288db3e
+1:10 isa Vector
+
+# ╔═╡ ce084ee6-1b2f-40da-8a70-1005dd861f05
+# we don't need the variable, so we use underscore _ to signal this fact
+[2 for _ in 1:5]
+
+# ╔═╡ fca887ee-28d2-4c21-9938-b892d87380eb
+# cube each number from 0 to 0.5, going in steps of size 0.1
+[x^3 for x in 0.0:0.1:0.5]
+
+# ╔═╡ dca96c3e-e674-4124-a794-ad1ea5daecb8
+md"vectors can be iterated over and indexed into as follows."
+
+# ╔═╡ 9dd88140-fc85-4896-bd3a-90a79d4c86b3
+squares = [n^2 for n in 1:10]
+
+# ╔═╡ 0cc8e35a-412f-4675-b9db-1c79ed305821
+for x in squares
+	if isodd(x)
+		println("forward")
+	else
+		println("backward")
+	end
+end
+
+# ╔═╡ 5f8ce592-ab59-49f1-babb-ae7d759bebbf
+# get the first entry
+squares[1]
+
+# ╔═╡ edb3721e-8fc2-4cf4-b925-bc2c729fc401
+# get the last entry
+squares[end]
+
+# ╔═╡ db53f578-7050-4831-8c98-8e5e243eb606
+# get the third to fifth entry
+squares[3:5]
+
+# ╔═╡ 681ddd77-9da9-4777-b0f5-64169fc47e3c
+# set the 9th entry
+squares[9] = -1
+
+# ╔═╡ f4631d98-dad4-41c9-ac78-af0aee40a119
+# and the 2nd to 3rd entries
+squares[2:3] = [-2, -3]
+
+# ╔═╡ 81fe6e9a-2af8-40b2-a364-a9512537aeeb
+squares
+
+# ╔═╡ 7d29e024-975f-4d61-8c5a-d3c9a6dfb0e2
+md"Back to our samples... Let's make a histogram and plot it."
+
+# ╔═╡ 93e93bcb-29cd-4b26-9047-0d7ff9c0ebb1
+md"## Exercise 6: Exponential Distribution"
+
+# ╔═╡ fd3754b0-f8cd-428d-9c97-f5d2583eb82f
+# not quite right jet. This should be sampled exponentially
+myrandexp(ω) = sqrt(ω)
 
 # ╔═╡ b545f815-545e-44bf-be76-25ee69881bf8
-samples = [uniform(rand(), 0.3, 0.5) for _ in 1:100_000]
+samples = [myrandexp(rand()) for _ in 1:100_000]
 
-# ╔═╡ cea21648-e526-4ec5-8436-1a47c89ca1ca
-mean(samples)
+# ╔═╡ c994b386-e183-471c-b161-5a4b5a3374ff
+samples isa Vector
 
 # ╔═╡ 3af8c14b-fa91-457a-87e3-d29866cc3e49
+# Make a histogram
 hist = fit(Histogram, samples)
 
 # ╔═╡ 53073c14-bf67-4f84-9a56-7d179dc77301
 plot(hist)
 
+# ╔═╡ d216cf65-2de7-46c7-8b0c-f1e3a355ab5f
+# compare to the built in randexp()
+randexp()
+
+# ╔═╡ 9ec38300-de96-4860-9893-1a8a00166004
+md"## Exercise 9: Semicircle"
+
+# ╔═╡ 831a9d8f-3eeb-4f1c-8c50-fb09413ee689
+function semicircle(rng::AbstractRNG)
+	x = rand(rng)
+	y = rand(rng)
+	# accept some, reject others
+
+	return x
+end
+
+# ╔═╡ 4912e73b-d15c-4024-9bb2-e355d0de663d
+let fig = Figure(), n = 500
+	ax = Axis(fig[1, 1]; aspect=DataAspect(), xlabel="x", ylabel="y")
+
+	pdf(x) = sqrt(1 - x^2)
+	
+	rxs = 2 .* rand(n) .- 1
+	rys = rand(n)
+	idx = rys .^2 .+ rxs .^2 .< 1
+	notidx = map(!identity, idx)
+	scatter!(ax, rxs[idx], rys[idx], color=:red, label="accepted")
+	scatter!(ax, rxs[notidx], rys[notidx], color=:black, label="rejected")
+
+	xs = -1:0.01:1
+	ys = pdf.(xs)
+	lines!(ax, xs, ys; label="pdf")
+
+	axislegend(ax)
+	
+	fig
+end
+
+# ╔═╡ 0391e8fe-0a18-4782-a797-157d253417af
+let n = 100_000  # estimating π
+	p = 4 * count(_ -> rand()^2 + rand()^2 <= 1, 1:n) / n
+	(π = p, error = abs(π - p) / π)
+end
+
 # ╔═╡ 01004f3b-fb1e-4da0-801e-786eb12a1e76
-md"# Mean and Variance"
+md"# Monte Carlo"
 
-# ╔═╡ 9af7fcc7-4cb5-4417-a026-0f7cc24d6c48
-sampleprob(cond, samples) = count(cond, samples) / length(samples)
+# ╔═╡ 4e88f8a9-fe2d-40b8-829d-b5d636127e83
+function walk(
+	jump,
+	rng::AbstractRNG,
+	x0s::AbstractVector{T},
+	nt::Integer,
+	p
+) where T
+	# initialise memory for trajectories
+	xs = map(_ -> Vector{T}(undef, nt), x0s)
 
-# ╔═╡ ddd2fe2d-2361-48f2-aaf0-fffeb57596aa
-@bind conclim Slider(0:0.01:1_000)
+	for i in 1:length(x0s)  # for each trajectory
+		x = x0s[i]  # init position
+		xs[i][1] = x  # # save initial position
+		
+		for j in 2:nt  # for each time step: jump and save
+			x = jump(rng, x, p)
+			xs[i][j] = x
+		end
+	end
 
-# ╔═╡ 60238875-8821-46f8-9b72-9abaebb4d20d
-function checkmarkov(samples, lim, μ)
-	p = sampleprob(s -> s >= lim, samples)
-	m = μ / lim
-	p, m, p <= m
+	return xs
 end
 
-# ╔═╡ 1d8277c3-4add-440e-be95-00baad51ab31
-checkmarkov(samples, mean(samples), conclim)
-
-# ╔═╡ a5077fad-a59b-4dda-99f8-768c54480f35
-function checkchebyshev(samples, lim, μ, σ²)
-	p = sampleprob(s -> abs(s - μ) >= lim, samples)
-	m = var(samples) / lim^2
-	p, m, p <= m
+# ╔═╡ f8acef37-ce4a-49f7-81df-745ba26b50a8
+function walk(jump, x0s::AbstractVector{T}, nt::Integer, p) where T
+	walk(jump, default_rng(), x0s, nt, p)
 end
 
-# ╔═╡ 8afb8d29-eb71-4d37-a50b-98fc73ee8fc2
-checkchebyshev(samples, conclim, mean(samples), var(samples))
+# ╔═╡ c75338b4-6bf0-4ef3-a07f-4736e3bcd4dd
+opendiffuse(rng::AbstractRNG, x, p) = x + p.σ * randn(rng)
+
+# ╔═╡ f0a0c065-600a-44e7-afec-9a43c1c02698
+discrete(rng::AbstractRNG, x, p) = rand(rng, Bool) ? x + p.σ : x - p.σ
+
+# ╔═╡ 9086bcd0-3fc4-4ba9-8f30-2f78b5ead628
+function boxdiffuse(rng::AbstractRNG, x, p)
+	y = x + p.σ * randn(rng)
+	y = y < 0.0 ? -y : y
+	while y > p.L
+		y = p.L - (y - p.L)
+		y = y < 0.0 ? -y : y
+	end
+	return y
+end
+
+# ╔═╡ 7b2c2c89-ff31-4f15-99b9-3a46eee4d19e
+ohrnstein_uhlenbeck(rng, x, p) = x - p.a * x + p.σ * randn(rng)
+
+# ╔═╡ 9286d291-cc9b-450a-aae5-7bf8fa32f185
+periodic(rng, x, p) = x - p.a * sin(x) + p.σ * randn(rng)
+
+# ╔═╡ a1a66164-d290-40f9-8f76-0fe3aef90564
+pareto(rng, x, p) = x + p.σ * (rand(rng, Pareto(p.α)) - 1) * rand(rng, (-1, 1))
+
+# ╔═╡ d7d7a506-993a-48a7-8215-d0c1a192dcf7
+kelly(rng, x, p) = rand(rng) <= p.p ? x * (1.0 + p.f * p.b) : x * (1.0 - p.f)
+
+# ╔═╡ a3bc1aa1-0795-4e7e-a55a-9e76366ce0f2
+rw = walk(opendiffuse, 0.1 * randn(100), 100, (σ = 0.1,))
 
 # ╔═╡ f1b1ecb1-4147-48c6-a9bc-b4949372094c
-let fig = Figure(), samples = rand(Pareto(0.95), 100_000), μ = mean(samples)
+let fig = Figure()
+	# add the following after fig[1, 1] to plot with y axis using log scale
+	# ; yscale=log10
 	ax = Axis(fig[1, 1])
 
-	ns = 1:length(samples)
-	μs = cumsum(samples) ./ ns
-	lines!(ax, ns, μs)
-	hlines!(ax, [μ]; color=:black)
+	for i in 1:length(rw)
+		lines!(ax, rw[i], color=(:black, 0.2))
+	end
+
+	fig
+end
+
+# ╔═╡ fa122c23-f3c8-4bdb-a6ed-585bb694da6f
+let fig = Figure()
+	ax = Axis(fig[1, 1])
+
+	N = length(rw[1])
+	μs = [mean([xs[i] for xs in rw]) for i in 1:N]
+
+	lines!(ax, μs)
+
+	fig
+end
+
+# ╔═╡ 6ee96f9d-4e8a-4c9a-aa44-c30f14496b97
+getvars(rw) = [var([xs[i] for xs in rw]) for i in 1:length(rw[1])]
+
+# ╔═╡ e20309dd-03d0-4003-b383-581fadaf74d0
+let fig = Figure()
+	ax = Axis(fig[1, 1])
+
+	lines!(ax, getvars(rw))
+
+	fig
+end
+
+# ╔═╡ 98179e10-52fa-44b7-9155-7300c27cd5a7
+linmodel(x, p) = x .* p[1] .+ p[2]
+
+# ╔═╡ 05873c45-3276-4df6-8cf0-3c97b55aa48d
+function getslope(vars)
+	fit = curve_fit(linmodel, 1:length(vars), vars, [1.0, 0.0])
+	fit.param[1]
+end
+
+# ╔═╡ 6fe7dcc5-805a-4d09-8baa-949952762d4c
+let fig = Figure()
+	ax = Axis(fig[1, 1])
+
+	σs = 0.1:0.1:1.0
+	slopes = [getslope(getvars(
+		walk(opendiffuse, 0.1 * randn(1_000), 10, (σ = σ,))
+	)) for σ in σs]
+	
+	scatter!(ax, σs .^ 2, slopes)
 
 	fig
 end
@@ -141,15 +427,6 @@ let fig = Figure(), p0 = [1, 0], T = T, nsteps = 10
 
 	fig
 end
-
-# ╔═╡ 2895dae8-6597-4c12-88cc-0c343fa1dead
-md"# Monte Carlo Simulations"
-
-# ╔═╡ f52985f8-1e71-4946-af73-b2b287d75ccd
-md"# Kelly Betting and Bankruptcy"
-
-# ╔═╡ ab6f1019-d37c-4431-a1ef-62fa2e7134b1
-
 
 # ╔═╡ ca0fb426-6214-4818-9db7-d7a57b2f9b7e
 md"# Poker"
@@ -421,16 +698,16 @@ PLUTO_PROJECT_TOML_CONTENTS = """
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+LsqFit = "2fda8390-95c7-5789-9bda-21331edee243"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
-ProfileSVG = "132c30aa-f267-4189-9183-c8a63c7e05e6"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 
 [compat]
 CairoMakie = "~0.9.2"
 Distributions = "~0.25.76"
+LsqFit = "~0.13.0"
 PlutoUI = "~0.7.48"
-ProfileSVG = "~0.2.1"
 StatsBase = "~0.33.21"
 """
 
@@ -440,7 +717,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.8.2"
 manifest_format = "2.0"
-project_hash = "611380a5b692c3de6fb0359ce97ee574ceb8c8f5"
+project_hash = "9edc8ebdaf323159a2dd679a78c4ed43778fb7d5"
 
 [[deps.AbstractFFTs]]
 deps = ["ChainRulesCore", "LinearAlgebra"]
@@ -474,6 +751,12 @@ version = "0.4.1"
 [[deps.ArgTools]]
 uuid = "0dad84c5-d112-42e6-8d28-ef12dabb789f"
 version = "1.1.1"
+
+[[deps.ArrayInterfaceCore]]
+deps = ["LinearAlgebra", "SparseArrays", "SuiteSparse"]
+git-tree-sha1 = "c46fb7dd1d8ca1d213ba25848a5ec4e47a1a1b08"
+uuid = "30b0a656-2188-435a-8636-2ec0e6a096e2"
+version = "0.1.26"
 
 [[deps.Artifacts]]
 uuid = "56f22d72-fd6d-98f1-02f0-08ddc0907c33"
@@ -570,6 +853,12 @@ git-tree-sha1 = "417b0ed7b8b838aa6ca0a87aadf1bb9eb111ce40"
 uuid = "5ae59095-9a9b-59fe-a467-6f913c188581"
 version = "0.12.8"
 
+[[deps.CommonSubexpressions]]
+deps = ["MacroTools", "Test"]
+git-tree-sha1 = "7b8a93dba8af7e3b42fecabf646260105ac373f7"
+uuid = "bbf7d656-a473-5ed7-a52c-81e309532950"
+version = "0.3.0"
+
 [[deps.Compat]]
 deps = ["Dates", "LinearAlgebra", "UUIDs"]
 git-tree-sha1 = "3ca828fe1b75fa84b021a7860bd039eaea84d2f2"
@@ -580,6 +869,12 @@ version = "4.3.0"
 deps = ["Artifacts", "Libdl"]
 uuid = "e66e0078-7015-5450-92f7-15fbd957f2ae"
 version = "0.5.2+0"
+
+[[deps.ConstructionBase]]
+deps = ["LinearAlgebra"]
+git-tree-sha1 = "fb21ddd70a051d882a1686a5a550990bbe371a95"
+uuid = "187b0558-2788-49d3-abe0-74a17ed4e7c9"
+version = "1.4.1"
 
 [[deps.Contour]]
 git-tree-sha1 = "d05d9e7b7aedff4e5b51a029dced05cfb6125781"
@@ -611,6 +906,18 @@ deps = ["InverseFunctions", "Test"]
 git-tree-sha1 = "80c3e8639e3353e5d2912fb3a1916b8455e2494b"
 uuid = "b429d917-457f-4dbc-8f4c-0cc954292b1d"
 version = "0.4.0"
+
+[[deps.DiffResults]]
+deps = ["StaticArraysCore"]
+git-tree-sha1 = "782dd5f4561f5d267313f23853baaaa4c52ea621"
+uuid = "163ba53b-c6d8-5494-b064-1a9d43ac40c5"
+version = "1.1.0"
+
+[[deps.DiffRules]]
+deps = ["IrrationalConstants", "LogExpFunctions", "NaNMath", "Random", "SpecialFunctions"]
+git-tree-sha1 = "8b7a4d23e22f5d44883671da70865ca98f2ebf9d"
+uuid = "b552c78f-8df3-52c6-915a-8e097449b14b"
+version = "1.12.0"
 
 [[deps.Distributed]]
 deps = ["Random", "Serialization", "Sockets"]
@@ -695,17 +1002,17 @@ git-tree-sha1 = "802bfc139833d2ba893dd9e62ba1767c88d708ae"
 uuid = "1a297f60-69ca-5386-bcde-b61e274b549b"
 version = "0.13.5"
 
+[[deps.FiniteDiff]]
+deps = ["ArrayInterfaceCore", "LinearAlgebra", "Requires", "Setfield", "SparseArrays", "StaticArrays"]
+git-tree-sha1 = "bb61d9e5085784fe453f70c97b23964c5bf36942"
+uuid = "6a86dc24-6348-571c-b903-95158fe2bd41"
+version = "2.16.0"
+
 [[deps.FixedPointNumbers]]
 deps = ["Statistics"]
 git-tree-sha1 = "335bfdceacc84c5cdf16aadc768aa5ddfc5383cc"
 uuid = "53c48c17-4a7d-5ca2-90c5-79b7896eea93"
 version = "0.8.4"
-
-[[deps.FlameGraphs]]
-deps = ["AbstractTrees", "Colors", "FileIO", "FixedPointNumbers", "IndirectArrays", "LeftChildRightSiblingTrees", "Profile"]
-git-tree-sha1 = "d9eee53657f6a13ee51120337f98684c9c702264"
-uuid = "08572546-2f56-4bcf-ba4e-bab62c3a3f89"
-version = "0.2.10"
 
 [[deps.Fontconfig_jll]]
 deps = ["Artifacts", "Bzip2_jll", "Expat_jll", "FreeType2_jll", "JLLWrappers", "Libdl", "Libuuid_jll", "Pkg", "Zlib_jll"]
@@ -718,6 +1025,12 @@ deps = ["Printf"]
 git-tree-sha1 = "8339d61043228fdd3eb658d86c926cb282ae72a8"
 uuid = "59287772-0a20-5a39-b81b-1366585eb4c0"
 version = "0.4.2"
+
+[[deps.ForwardDiff]]
+deps = ["CommonSubexpressions", "DiffResults", "DiffRules", "LinearAlgebra", "LogExpFunctions", "NaNMath", "Preferences", "Printf", "Random", "SpecialFunctions", "StaticArrays"]
+git-tree-sha1 = "187198a4ed8ccd7b5d99c41b69c679269ea2b2d4"
+uuid = "f6369f11-7733-5829-9624-2563aa707210"
+version = "0.10.32"
 
 [[deps.FreeType]]
 deps = ["CEnum", "FreeType2_jll"]
@@ -742,6 +1055,10 @@ deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "aa31987c2ba8704e23c6c8ba8a4f769d5d7e4f91"
 uuid = "559328eb-81f9-559d-9380-de523a88c83c"
 version = "1.0.10+0"
+
+[[deps.Future]]
+deps = ["Random"]
+uuid = "9fa8497b-333b-5362-9e8d-4d0656e87820"
 
 [[deps.GeoInterface]]
 deps = ["Extents"]
@@ -953,12 +1270,6 @@ git-tree-sha1 = "a560dd966b386ac9ae60bdd3a3d3a326062d3c3e"
 uuid = "8cdb02fc-e678-4876-92c5-9defec4f444e"
 version = "0.3.1"
 
-[[deps.LeftChildRightSiblingTrees]]
-deps = ["AbstractTrees"]
-git-tree-sha1 = "b864cb409e8e445688bc478ef87c0afe4f6d1f8d"
-uuid = "1d6d02ad-be62-4b6b-8a6d-2f90e265016e"
-version = "0.1.3"
-
 [[deps.LibCURL]]
 deps = ["LibCURL_jll", "MozillaCACerts_jll"]
 uuid = "b27032c2-a3e7-50c8-80cd-2d36dbcbfd21"
@@ -1030,6 +1341,12 @@ version = "0.3.18"
 [[deps.Logging]]
 uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
 
+[[deps.LsqFit]]
+deps = ["Distributions", "ForwardDiff", "LinearAlgebra", "NLSolversBase", "OptimBase", "Random", "StatsBase"]
+git-tree-sha1 = "00f475f85c50584b12268675072663dfed5594b2"
+uuid = "2fda8390-95c7-5789-9bda-21331edee243"
+version = "0.13.0"
+
 [[deps.MIMEs]]
 git-tree-sha1 = "65f28ad4b594aebe22157d6fac869786a255b7eb"
 uuid = "6c6e2e6c-3030-632d-7369-2d6c69616d65"
@@ -1040,6 +1357,12 @@ deps = ["Artifacts", "IntelOpenMP_jll", "JLLWrappers", "LazyArtifacts", "Libdl",
 git-tree-sha1 = "2ce8695e1e699b68702c03402672a69f54b8aca9"
 uuid = "856f044c-d86e-5d09-b602-aeab76dc8ba7"
 version = "2022.2.0+0"
+
+[[deps.MacroTools]]
+deps = ["Markdown", "Random"]
+git-tree-sha1 = "42324d08725e200c23d4dfb549e0d5d89dede2d2"
+uuid = "1914dd2f-81c6-5fcd-8719-6d5c9610ff09"
+version = "0.5.10"
 
 [[deps.Makie]]
 deps = ["Animations", "Base64", "ColorBrewer", "ColorSchemes", "ColorTypes", "Colors", "Contour", "Distributions", "DocStringExtensions", "FFMPEG", "FileIO", "FixedPointNumbers", "Formatting", "FreeType", "FreeTypeAbstraction", "GeometryBasics", "GridLayoutBase", "ImageIO", "InteractiveUtils", "IntervalSets", "Isoband", "KernelDensity", "LaTeXStrings", "LinearAlgebra", "MakieCore", "Markdown", "Match", "MathTeXEngine", "MiniQhull", "Observables", "OffsetArrays", "Packing", "PlotUtils", "PolygonOps", "Printf", "Random", "RelocatableFolders", "Serialization", "Showoff", "SignedDistanceFields", "SnoopPrecompile", "SparseArrays", "Statistics", "StatsBase", "StatsFuns", "StructArrays", "TriplotBase", "UnicodeFun"]
@@ -1102,6 +1425,12 @@ version = "0.3.3"
 [[deps.MozillaCACerts_jll]]
 uuid = "14a3606d-f60d-562e-9121-12d972cd8159"
 version = "2022.2.1"
+
+[[deps.NLSolversBase]]
+deps = ["DiffResults", "Distributed", "FiniteDiff", "ForwardDiff"]
+git-tree-sha1 = "50310f934e55e5ca3912fb941dec199b49ca9b68"
+uuid = "d41bc354-129a-5804-8e4c-c37616107c6c"
+version = "7.8.2"
 
 [[deps.NaNMath]]
 deps = ["OpenLibm_jll"]
@@ -1169,6 +1498,12 @@ deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "Pk
 git-tree-sha1 = "13652491f6856acfd2db29360e1bbcd4565d04f1"
 uuid = "efe28fd5-8261-553b-a9e1-b2916fc3738e"
 version = "0.5.5+0"
+
+[[deps.OptimBase]]
+deps = ["NLSolversBase", "Printf", "Reexport"]
+git-tree-sha1 = "9cb1fee807b599b5f803809e85c81b582d2009d6"
+uuid = "87e2bd06-a317-5318-96d9-3ecbac512eee"
+version = "2.0.2"
 
 [[deps.Opus_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -1266,16 +1601,6 @@ version = "1.3.0"
 deps = ["Unicode"]
 uuid = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 
-[[deps.Profile]]
-deps = ["Printf"]
-uuid = "9abbd945-dff8-562f-b5e8-e1ebf5ef1b79"
-
-[[deps.ProfileSVG]]
-deps = ["Colors", "FlameGraphs", "Profile", "UUIDs"]
-git-tree-sha1 = "e4df82a5dadc26736f106f8d7fc97c42cc6c91ae"
-uuid = "132c30aa-f267-4189-9183-c8a63c7e05e6"
-version = "0.2.1"
-
 [[deps.ProgressMeter]]
 deps = ["Distributed", "Printf"]
 git-tree-sha1 = "d7a7aef8f8f2d537104f170139553b14dfe39fe9"
@@ -1372,6 +1697,12 @@ version = "1.1.1"
 
 [[deps.Serialization]]
 uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
+
+[[deps.Setfield]]
+deps = ["ConstructionBase", "Future", "MacroTools", "StaticArraysCore"]
+git-tree-sha1 = "e2cc6d8c88613c05e1defb55170bf5ff211fbeac"
+uuid = "efcf1570-3423-57d1-acb7-fd33fddbac46"
+version = "1.1.1"
 
 [[deps.SharedArrays]]
 deps = ["Distributed", "Mmap", "Random", "Serialization"]
@@ -1690,21 +2021,74 @@ version = "3.5.0+0"
 # ╠═6259db20-c705-4e7c-ba8f-18cc8b733f8b
 # ╠═aa7a9420-f7e1-4a44-9375-882c79f97e1a
 # ╟─7c145e9e-5d12-11ed-3c4b-796dde8540c7
-# ╠═fd3754b0-f8cd-428d-9c97-f5d2583eb82f
+# ╠═9128a75c-bcc4-4131-bdd0-73a6a8490165
+# ╟─f89e1123-2dd8-4c40-b501-909829e8c714
+# ╠═985916d7-8105-48d7-a3c9-9447afa50416
+# ╠═f3e091d6-5359-40b2-817e-db2848d70f90
+# ╠═f1ff8af1-6954-4771-9981-db2e295360a3
+# ╟─6382e7e4-2508-4bf6-9b09-41692268089b
+# ╠═bed0c3f8-0017-4fdd-b520-e4a265677140
+# ╠═0642ade6-1869-4848-bc85-f60a85ec15ff
+# ╠═154cd13b-391d-46c2-83d6-241ca23a154e
+# ╠═08548873-ffd7-4f0c-83cd-8ba4c8d536c6
+# ╟─bbfdd8d8-f27f-4830-b468-df189c778de8
+# ╠═a666d797-ecf3-441f-9406-f616305f2d31
+# ╟─a736afcc-b477-45f9-ae5b-0fdd31b4f4f7
+# ╠═ca39bb7a-39e6-4756-810b-20813aede18f
+# ╟─57ea1a43-33ec-46d9-a26c-9a52d5fb52f1
 # ╠═e09214e7-82b3-4119-8b97-ff92da6c9f3f
-# ╠═a371cb82-8f98-4032-bc3d-e89278fd90e1
+# ╠═e12a61f0-b0bc-4fad-8712-64668dad552b
+# ╟─f35904f0-a884-4979-a464-2ac04fcd5cf7
+# ╠═4cf08f8c-b7ee-4700-b556-b61abe166b15
+# ╠═04a883ff-f076-47a3-9c7a-b645abb6e2c3
+# ╠═b45f6141-c1ee-4ec0-949f-b4fbc7b512e3
+# ╠═7d0b767d-61c4-4041-909e-1fb2a177ccf9
+# ╠═41d77d2a-b38b-46a7-97a1-a3e530df33fb
+# ╟─9e61d9c4-1308-46d5-b32d-7e8419a48f67
 # ╠═b545f815-545e-44bf-be76-25ee69881bf8
-# ╠═cea21648-e526-4ec5-8436-1a47c89ca1ca
+# ╠═c994b386-e183-471c-b161-5a4b5a3374ff
+# ╠═08cb36a2-4b14-4003-b2f1-131f87e82db2
+# ╠═8d59dc93-cc98-4e58-aaf0-3112758c7cb5
+# ╠═bca187e3-04c6-4a30-81ba-c639f288db3e
+# ╠═ce084ee6-1b2f-40da-8a70-1005dd861f05
+# ╠═fca887ee-28d2-4c21-9938-b892d87380eb
+# ╟─dca96c3e-e674-4124-a794-ad1ea5daecb8
+# ╠═9dd88140-fc85-4896-bd3a-90a79d4c86b3
+# ╠═0cc8e35a-412f-4675-b9db-1c79ed305821
+# ╠═5f8ce592-ab59-49f1-babb-ae7d759bebbf
+# ╠═edb3721e-8fc2-4cf4-b925-bc2c729fc401
+# ╠═db53f578-7050-4831-8c98-8e5e243eb606
+# ╠═681ddd77-9da9-4777-b0f5-64169fc47e3c
+# ╠═f4631d98-dad4-41c9-ac78-af0aee40a119
+# ╠═81fe6e9a-2af8-40b2-a364-a9512537aeeb
+# ╟─7d29e024-975f-4d61-8c5a-d3c9a6dfb0e2
 # ╠═3af8c14b-fa91-457a-87e3-d29866cc3e49
 # ╠═53073c14-bf67-4f84-9a56-7d179dc77301
-# ╠═01004f3b-fb1e-4da0-801e-786eb12a1e76
-# ╠═9af7fcc7-4cb5-4417-a026-0f7cc24d6c48
-# ╠═ddd2fe2d-2361-48f2-aaf0-fffeb57596aa
-# ╠═60238875-8821-46f8-9b72-9abaebb4d20d
-# ╠═1d8277c3-4add-440e-be95-00baad51ab31
-# ╠═a5077fad-a59b-4dda-99f8-768c54480f35
-# ╠═8afb8d29-eb71-4d37-a50b-98fc73ee8fc2
+# ╟─93e93bcb-29cd-4b26-9047-0d7ff9c0ebb1
+# ╠═fd3754b0-f8cd-428d-9c97-f5d2583eb82f
+# ╠═d216cf65-2de7-46c7-8b0c-f1e3a355ab5f
+# ╟─9ec38300-de96-4860-9893-1a8a00166004
+# ╠═831a9d8f-3eeb-4f1c-8c50-fb09413ee689
+# ╠═4912e73b-d15c-4024-9bb2-e355d0de663d
+# ╠═0391e8fe-0a18-4782-a797-157d253417af
+# ╟─01004f3b-fb1e-4da0-801e-786eb12a1e76
+# ╠═4e88f8a9-fe2d-40b8-829d-b5d636127e83
+# ╠═f8acef37-ce4a-49f7-81df-745ba26b50a8
+# ╠═c75338b4-6bf0-4ef3-a07f-4736e3bcd4dd
+# ╠═f0a0c065-600a-44e7-afec-9a43c1c02698
+# ╠═9086bcd0-3fc4-4ba9-8f30-2f78b5ead628
+# ╠═7b2c2c89-ff31-4f15-99b9-3a46eee4d19e
+# ╠═9286d291-cc9b-450a-aae5-7bf8fa32f185
+# ╠═a1a66164-d290-40f9-8f76-0fe3aef90564
+# ╠═d7d7a506-993a-48a7-8215-d0c1a192dcf7
+# ╠═a3bc1aa1-0795-4e7e-a55a-9e76366ce0f2
 # ╠═f1b1ecb1-4147-48c6-a9bc-b4949372094c
+# ╠═fa122c23-f3c8-4bdb-a6ed-585bb694da6f
+# ╠═6ee96f9d-4e8a-4c9a-aa44-c30f14496b97
+# ╠═e20309dd-03d0-4003-b383-581fadaf74d0
+# ╠═98179e10-52fa-44b7-9155-7300c27cd5a7
+# ╠═05873c45-3276-4df6-8cf0-3c97b55aa48d
+# ╠═6fe7dcc5-805a-4d09-8baa-949952762d4c
 # ╠═f2f81a76-a2c8-40e8-8282-be7bf869370c
 # ╠═b62f7c11-07b8-4dd9-b6c7-bc8a13ea7faf
 # ╠═8f001bf1-b456-4fbd-b025-8faee9754768
@@ -1714,9 +2098,6 @@ version = "3.5.0+0"
 # ╠═557f84d7-7526-4978-942c-c2d0fe328dc8
 # ╠═6ac10e92-8687-4a99-b64c-4979f96826aa
 # ╠═9ebe8846-ee64-44be-8726-fafcee2488b2
-# ╠═2895dae8-6597-4c12-88cc-0c343fa1dead
-# ╠═f52985f8-1e71-4946-af73-b2b287d75ccd
-# ╠═ab6f1019-d37c-4431-a1ef-62fa2e7134b1
 # ╠═ca0fb426-6214-4818-9db7-d7a57b2f9b7e
 # ╠═f0e60438-584c-476f-a832-3e59bc42010e
 # ╠═5983efa0-5cf3-4fb5-abcd-5390a578e95d
